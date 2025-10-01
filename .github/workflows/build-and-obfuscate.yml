@@ -1,0 +1,129 @@
+name: Build and Obfuscate
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Create package.json for build dependencies
+      run: |
+        cat > package.json << 'EOF'
+        {
+          "name": "peaklogger-build",
+          "version": "1.0.0",
+          "private": true,
+          "scripts": {
+            "build": "node build.js"
+          },
+          "devDependencies": {
+            "html-minifier": "^4.0.0",
+            "javascript-obfuscator": "^4.0.2",
+            "clean-css": "^5.3.2"
+          }
+        }
+        EOF
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Create build script
+      run: |
+        cat > build.js << 'EOF'
+        const fs = require('fs');
+        const path = require('path');
+        const JavaScriptObfuscator = require('javascript-obfuscator');
+        const CleanCSS = require('clean-css');
+        const { minify } = require('html-minifier');
+
+        // Read the source files
+        const htmlContent = fs.readFileSync('index.html', 'utf8');
+        const cssContent = fs.readFileSync('styles.css', 'utf8');
+        const jsContent = fs.readFileSync('scripts.js', 'utf8');
+
+        console.log('Reading source files...');
+
+        // Minify and clean CSS
+        const minifiedCSS = new CleanCSS({
+          level: 2,
+          returnPromise: false
+        }).minify(cssContent).styles;
+
+        console.log('CSS minified');
+
+        // Obfuscate JavaScript
+        const obfuscatedJS = JavaScriptObfuscator.obfuscate(jsContent, {
+          compact: true,
+          controlFlowFlattening: true,
+          controlFlowFlatteningThreshold: 1,
+          numbersToExpressions: true,
+          simplify: true,
+          stringArrayShuffle: true,
+          splitStrings: true,
+          stringArrayThreshold: 1
+        }).getObfuscatedCode();
+
+        console.log('JavaScript obfuscated');
+
+        // Create the combined HTML
+        let combinedHTML = htmlContent
+          // Remove external CSS link
+          .replace(/<link rel="stylesheet" href="styles\.css">/, '')
+          // Remove external JS script
+          .replace(/<script src="scripts\.js"><\/script>/, '')
+          // Add inline CSS
+          .replace('</head>', `  <style>${minifiedCSS}</style>\n</head>`)
+          // Add inline obfuscated JS
+          .replace('</body>', `  <script>${obfuscatedJS}</script>\n</body>`);
+
+        // Minify the final HTML
+        const finalHTML = minify(combinedHTML, {
+          removeComments: true,
+          removeRedundantAttributes: true,
+          removeScriptTypeAttributes: true,
+          removeStyleLinkTypeAttributes: true,
+          useShortDoctype: true,
+          collapseWhitespace: true,
+          minifyCSS: true,
+          minifyJS: true
+        });
+
+        // Create dist directory if it doesn't exist
+        if (!fs.existsSync('dist')) {
+          fs.mkdirSync('dist');
+        }
+
+        // Write the final HTML file
+        fs.writeFileSync('dist/index.html', finalHTML);
+        
+        console.log('Build completed successfully!');
+        console.log(`Original size: ${(htmlContent.length + cssContent.length + jsContent.length)} bytes`);
+        console.log(`Final size: ${finalHTML.length} bytes`);
+        EOF
+
+    - name: Build the application
+      run: npm run build
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: obfuscated-peaklogger
+        path: ./dist
+        retention-days: 30
