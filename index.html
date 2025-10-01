@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PeakLogger - Sign In</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="login-card">
+            <div class="logo-section">
+                <h1>PeakLogger</h1>
+            </div>
+            
+            <div class="form-section">
+                <h2>Sign in</h2>
+                <p class="subtitle">to continue to PeakLogger</p>
+                
+                <form id="loginForm" class="login-form">
+                    <div class="input-group">
+                        <input type="email" id="email" name="email" required>
+                        <label for="email">Email or phone</label>
+                        <span class="input-border"></span>
+                        <span class="error-message" id="email-error"></span>
+                    </div>
+                    
+                    <div class="input-group">
+                        <input type="password" id="password" name="password" required>
+                        <label for="password">Password</label>
+                        <span class="input-border"></span>
+                        <span class="error-message" id="password-error"></span>
+                    </div>
+                    
+                    <div class="forgot-password">
+                        <a href="#">Forgot password?</a>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary">Create account</button>
+                        <button type="submit" class="btn-primary">Next</button>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="footer-links">
+                <select class="language-selector">
+                    <option value="en">English (United States)</option>
+                    <option value="es">Español</option>
+                    <option value="fr">Français</option>
+                </select>
+                <div class="links">
+                    <a href="#">Help</a>
+                    <a href="#">Privacy</a>
+                    <a href="#">Terms</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Firebase integration with error handling
+        async function initializeFirebase() {
+            try {
+                // Import the functions you need from the SDKs you need
+                const { initializeApp } = await import("https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js");
+                const { getDatabase, ref, push, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/12.3.0/firebase-database.js");
+                const { getAnalytics } = await import("https://www.gstatic.com/firebasejs/12.3.0/firebase-analytics.js");
+
+                // Your web app's Firebase configuration
+                const firebaseConfig = {
+                    apiKey: "AIzaSyCuTNtai0QEnKtUROJOGW0pIS_sHFJ3IXs",
+                    authDomain: "loggingsa-e7d4a.firebaseapp.com",
+                    databaseURL: "https://loggingsa-e7d4a-default-rtdb.firebaseio.com",
+                    projectId: "loggingsa-e7d4a",
+                    storageBucket: "loggingsa-e7d4a.firebasestorage.app",
+                    messagingSenderId: "415127893213",
+                    appId: "1:415127893213:web:3011efd88eaebda7295734",
+                    measurementId: "G-48V23J4XSC"
+                };
+
+                // Initialize Firebase
+                const app = initializeApp(firebaseConfig);
+                const database = getDatabase(app);
+                const analytics = getAnalytics(app);
+
+                // Make Firebase available globally
+                window.firebaseDB = database;
+                window.firebaseRef = ref;
+                window.firebasePush = push;
+                window.firebaseServerTimestamp = serverTimestamp;
+                window.firebaseInitialized = true;
+                
+                console.log('Firebase initialized successfully');
+            } catch (error) {
+                console.warn('Firebase initialization failed:', error.message);
+                window.firebaseInitialized = false;
+                
+                // Provide fallback logging for demo purposes
+                window.firebaseDB = null;
+                window.firebaseRef = () => {};
+                window.firebasePush = (ref, data) => {
+                    return Promise.resolve().then(() => {
+                        console.log('Firebase Fallback - Would save login data:', data);
+                        return { key: 'demo-key-' + Date.now() };
+                    });
+                };
+                window.firebaseServerTimestamp = () => Date.now();
+            }
+        }
+
+        // Initialize Firebase when DOM is loaded
+        initializeFirebase();
+    </script>
+    <script src="scripts.js"></script>
+</body>
+</html>
