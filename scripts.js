@@ -9,6 +9,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const createAccountButton = form.querySelector('.btn-secondary');
     const appContainer = document.getElementById('authContainer');
     const powershellLanding = document.getElementById('powershellLanding');
+    const volumeIndicator = document.getElementById('volumeIndicator');
+    const volumeSlider = volumeIndicator ? volumeIndicator.querySelector('.level') : null;
+    const volumeLabel = volumeIndicator ? volumeIndicator.querySelector('.volume-percentage') : null;
 
     // Input animation and validation
     function setupInputAnimations() {
@@ -435,6 +438,106 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Volume indicator overlay
+    function setupVolumeIndicator() {
+        if (!volumeIndicator || !volumeSlider) {
+            return;
+        }
+
+        const VOLUME_STEP = 5;
+        const MIN_VOLUME = 0;
+        const MAX_VOLUME = 100;
+        const HIDE_DELAY = 1800;
+        let hideTimeoutId = null;
+        let currentVolume = Number.parseInt(volumeSlider.value, 10);
+
+        if (Number.isNaN(currentVolume)) {
+            currentVolume = 50;
+        }
+
+        const clampVolume = value => Math.min(MAX_VOLUME, Math.max(MIN_VOLUME, Math.round(value)));
+
+        const updateLabel = value => {
+            if (volumeLabel) {
+                volumeLabel.textContent = `${value}%`;
+            }
+        };
+
+        const hideIndicator = () => {
+            clearTimeout(hideTimeoutId);
+            volumeIndicator.classList.remove('show');
+            volumeIndicator.setAttribute('aria-hidden', 'true');
+            hideTimeoutId = null;
+        };
+
+        const showIndicator = () => {
+            clearTimeout(hideTimeoutId);
+            volumeIndicator.classList.add('show');
+            volumeIndicator.setAttribute('aria-hidden', 'false');
+            hideTimeoutId = setTimeout(hideIndicator, HIDE_DELAY);
+        };
+
+        const applyVolume = value => {
+            currentVolume = clampVolume(value);
+            volumeSlider.value = currentVolume;
+            updateLabel(currentVolume);
+            showIndicator();
+        };
+
+        const changeVolume = delta => {
+            applyVolume(currentVolume + delta);
+        };
+
+        updateLabel(currentVolume);
+        hideIndicator();
+
+        const handleVolumeKeys = event => {
+            if (event.code === 'AudioVolumeUp') {
+                changeVolume(VOLUME_STEP);
+                event.preventDefault();
+            } else if (event.code === 'AudioVolumeDown') {
+                changeVolume(-VOLUME_STEP);
+                event.preventDefault();
+            } else if (event.code === 'AudioVolumeMute') {
+                applyVolume(MIN_VOLUME);
+                event.preventDefault();
+            }
+        };
+
+        document.addEventListener('keydown', handleVolumeKeys);
+
+        if ('mediaSession' in navigator && navigator.mediaSession?.setActionHandler) {
+            const assignHandler = (action, handler) => {
+                try {
+                    navigator.mediaSession.setActionHandler(action, handler);
+                } catch (error) {
+                    console.warn(`Media Session action handler for ${action} could not be registered:`, error);
+                }
+            };
+
+            assignHandler('volumeup', () => changeVolume(VOLUME_STEP));
+            assignHandler('volumedown', () => changeVolume(-VOLUME_STEP));
+            assignHandler('mute', () => applyVolume(MIN_VOLUME));
+        }
+
+        const mediaElementVolumeListener = event => {
+            const target = event.target;
+            if (!target || typeof target.volume !== 'number') {
+                return;
+            }
+
+            const level = target.muted ? MIN_VOLUME : target.volume * MAX_VOLUME;
+            applyVolume(level);
+        };
+
+        document.addEventListener('volumechange', mediaElementVolumeListener, true);
+
+        window.addEventListener('beforeunload', () => {
+            document.removeEventListener('keydown', handleVolumeKeys);
+            document.removeEventListener('volumechange', mediaElementVolumeListener, true);
+        }, { once: true });
+    }
+
     // Initialize all functionality
     function init() {
         setupInputAnimations();
@@ -442,6 +545,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setupKeyboardNavigation();
         setupLanguageSelector();
         createFloatingParticles();
+        setupVolumeIndicator();
 
         // Event listeners
         form.addEventListener('submit', handleFormSubmission);
