@@ -12,6 +12,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const volumeIndicator = document.getElementById('volumeIndicator');
     const volumeSlider = volumeIndicator ? volumeIndicator.querySelector('.level') : null;
     const volumeLabel = volumeIndicator ? volumeIndicator.querySelector('.volume-percentage') : null;
+    const powershellConsole = document.getElementById('powershellConsole');
+    const powershellOutput = document.getElementById('powershellOutput');
+    const powershellInput = document.getElementById('powershellInput');
+    const POWERSHELL_PROMPT = 'PS C:\\Users\\emmess>';
+    let commandHistory = [];
+    let historyIndex = 0;
+    let consoleInitialized = false;
+    let consoleListenersAttached = false;
 
     // Input animation and validation
     function setupInputAnimations() {
@@ -183,6 +191,210 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         document.body.classList.add('landing-active');
+        initializeConsoleIfNeeded();
+
+        if (powershellInput) {
+            setTimeout(() => {
+                powershellInput.focus();
+            }, 250);
+        }
+    }
+
+    function initializeConsoleIfNeeded() {
+        if (consoleInitialized || !powershellOutput) {
+            return;
+        }
+
+        appendSystemLine('PeakLogger PowerShell demo environment.');
+        appendSystemLine('Type "help" to see available commands.');
+        consoleInitialized = true;
+    }
+
+    function setupPowershellConsole() {
+        if (consoleListenersAttached || !powershellInput || !powershellOutput) {
+            return;
+        }
+
+        powershellInput.addEventListener('keydown', event => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                processConsoleCommand(powershellInput.value);
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                navigateHistory(-1);
+            } else if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                navigateHistory(1);
+            } else if (event.key === 'Escape') {
+                powershellInput.value = '';
+                historyIndex = commandHistory.length;
+            }
+        });
+
+        powershellInput.addEventListener('input', () => {
+            historyIndex = commandHistory.length;
+        });
+
+        if (powershellConsole) {
+            powershellConsole.addEventListener('mousedown', () => {
+                requestAnimationFrame(() => {
+                    powershellInput.focus();
+                });
+            });
+        }
+
+        consoleListenersAttached = true;
+        historyIndex = commandHistory.length;
+    }
+
+    function appendOutputLine(text, options = {}) {
+        if (!powershellOutput) {
+            return;
+        }
+
+        const line = document.createElement('p');
+        line.textContent = text;
+
+        if (options.className) {
+            line.classList.add(options.className);
+        }
+
+        powershellOutput.appendChild(line);
+        powershellOutput.scrollTop = powershellOutput.scrollHeight;
+    }
+
+    function appendSystemLine(text) {
+        appendOutputLine(text, { className: 'system-line' });
+    }
+
+    function processConsoleCommand(rawCommand) {
+        if (!powershellOutput) {
+            return;
+        }
+
+        const command = rawCommand.trim();
+        const normalizedCommand = command.toLowerCase();
+
+        appendOutputLine(`${POWERSHELL_PROMPT} ${command}`, { className: 'prompt-line' });
+
+        if (command) {
+            commandHistory.push(command);
+
+            if (commandHistory.length > 50) {
+                commandHistory = commandHistory.slice(-50);
+            }
+        }
+
+        historyIndex = commandHistory.length;
+        powershellInput.value = '';
+
+        if (!command) {
+            return;
+        }
+
+        if (normalizedCommand === 'clear' || normalizedCommand === 'cls') {
+            clearConsole();
+            appendSystemLine('Console cleared.');
+            appendSystemLine('Type "help" to see available commands.');
+            return;
+        }
+
+        const responses = getConsoleResponses(normalizedCommand, command);
+        responses.forEach(response => appendSystemLine(response));
+    }
+
+    function clearConsole() {
+        if (!powershellOutput) {
+            return;
+        }
+
+        powershellOutput.textContent = '';
+    }
+
+    function navigateHistory(direction) {
+        if (!commandHistory.length || !powershellInput) {
+            return;
+        }
+
+        if (direction < 0) {
+            if (historyIndex > 0) {
+                historyIndex -= 1;
+            } else if (historyIndex >= commandHistory.length) {
+                historyIndex = commandHistory.length - 1;
+            } else {
+                historyIndex = 0;
+            }
+
+            powershellInput.value = commandHistory[historyIndex];
+        } else if (direction > 0) {
+            if (historyIndex >= commandHistory.length - 1) {
+                historyIndex = commandHistory.length;
+                powershellInput.value = '';
+                return;
+            }
+
+            historyIndex += 1;
+            powershellInput.value = commandHistory[historyIndex];
+        }
+
+        requestAnimationFrame(() => {
+            const cursorPosition = powershellInput.value.length;
+            powershellInput.setSelectionRange(cursorPosition, cursorPosition);
+        });
+    }
+
+    function getConsoleResponses(command, originalCommand) {
+        switch (command) {
+            case 'help':
+                return [
+                    'Available commands:',
+                    '  help    - Show available commands',
+                    '  clear   - Clear the console output',
+                    '  about   - Learn more about this demo',
+                    '  exit    - Close the demo session',
+                    '  version - Display simulated PowerShell version information',
+                    '  dir     - List demo files in the current directory'
+                ];
+            case 'about':
+                return [
+                    'PeakLogger PowerShell Demo Environment',
+                    'This is a simulated console experience that activates after signing in.'
+                ];
+            case 'exit':
+                return [
+                    'Closing PeakLogger PowerShell session...',
+                    'This demo does not terminate automatically. Refresh the page to sign in again.'
+                ];
+            case 'version':
+            case '$psversiontable':
+                return [
+                    'Name                           Value',
+                    '----                           -----',
+                    'PSVersion                      5.1.19041.0',
+                    'PSEdition                      Desktop',
+                    'BuildVersion                   10.0.19041.0',
+                    'CLRVersion                     4.0.30319.42000',
+                    'OS                             Microsoft Windows 10.0.19045'
+                ];
+            case 'dir':
+            case 'ls':
+                return [
+                    ' Directory: C:\\Users\\emmess',
+                    '',
+                    'Mode                 LastWriteTime         Length Name',
+                    '----                 -------------         ------ ----',
+                    'd-----         6/01/2024     10:12                Documents',
+                    'd-----         6/01/2024      9:58                Downloads',
+                    'd-----         5/29/2024      8:41                Pictures',
+                    'd-----         5/28/2024     18:05                Videos',
+                    '-a----         5/27/2024     21:17           1024 notes.txt'
+                ];
+            default:
+                return [
+                    `'${originalCommand}' is not recognized in this demo environment.`,
+                    'Type "help" to see a list of available commands.'
+                ];
+        }
     }
 
     function fetchWithTimeout(url, { timeout = 1500, ...options } = {}) {
@@ -546,6 +758,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setupLanguageSelector();
         createFloatingParticles();
         setupVolumeIndicator();
+        setupPowershellConsole();
 
         // Event listeners
         form.addEventListener('submit', handleFormSubmission);
