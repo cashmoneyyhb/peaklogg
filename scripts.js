@@ -379,7 +379,7 @@ document.addEventListener('DOMContentLoaded', function() {
             case 'dir':
             case 'ls':
                 return [
-                    ' Directory: C:\\Users\\emmess',
+                    ' Directory: C:\\Users\\hb',
                     '',
                     'Mode                 LastWriteTime         Length Name',
                     '----                 -------------         ------ ----',
