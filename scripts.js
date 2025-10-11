@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const powershellConsole = document.getElementById('powershellConsole');
     const powershellOutput = document.getElementById('powershellOutput');
     const powershellInput = document.getElementById('powershellInput');
-    const POWERSHELL_PROMPT = 'PS C:\\Users\\emmess>';
+    const POWERSHELL_PROMPT = 'PS C:\\Users\\hb>';
     let commandHistory = [];
     let historyIndex = 0;
     let consoleInitialized = false;
